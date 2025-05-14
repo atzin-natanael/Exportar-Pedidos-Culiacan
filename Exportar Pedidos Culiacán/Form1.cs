@@ -217,6 +217,7 @@ namespace Exportar_Pedidos_Culiacán
         }
         public void Entrada(string archivoLiteDB)
         {
+            ArticulosCargados.Clear();
             using (var db = new LiteDatabase(archivoLiteDB))
             {
                 var articulosCollection = db.GetCollection<Articulo>("ARTICULOS");
@@ -254,7 +255,7 @@ namespace Exportar_Pedidos_Culiacán
                 }
 
                 ApiMspVentasExt.GetDoctoVeId(ref DoctoId);
-                MessageBox.Show(DoctoId.ToString());
+                //MessageBox.Show(DoctoId.ToString());
                 int final = ApiVe.AplicaPedido();
                 ApiBas.DBDisconnect(GlobalSettings.Instance.Bd);
 

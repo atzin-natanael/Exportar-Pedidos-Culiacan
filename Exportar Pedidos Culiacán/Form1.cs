@@ -55,17 +55,20 @@ namespace Exportar_Pedidos_Culiacán
             }
 
         }
+
+
         private void Buscar_Click(object sender, EventArgs e)
         {
             GetFireBirdValue getFireBirdValue = new GetFireBirdValue();
-            string query = "SELECT FOLIO, CLAVE_CLIENTE, VIA_EMBARQUE_ID, IMPORTE_NETO, CLIENTE_ID, DOCTO_VE_ID, DESCRIPCION FROM DOCTOS_VE WHERE VIA_EMBARQUE_ID = '1268414' AND TIPO_DOCTO = 'P' AND ALMACEN_ID = '108401' AND ESTATUS = 'P' AND FECHA >= CURRENT_DATE - 7;";
+            //string query = "SELECT FOLIO, CLAVE_CLIENTE, VIA_EMBARQUE_ID, IMPORTE_NETO, CLIENTE_ID, DOCTO_VE_ID, DESCRIPCION FROM DOCTOS_VE WHERE (VIA_EMBARQUE_ID = '1268414' OR VIA_EMBARQUE_ID = '1268435') AND TIPO_DOCTO = 'P' AND ALMACEN_ID = '108401' AND ESTATUS = 'P' AND FECHA >= CURRENT_DATE - 1;";
+            string query = "SELECT  FOLIO,   CLAVE_CLIENTE,   VIA_EMBARQUE_ID,  IMPORTE_NETO,   CLIENTE_ID,   DOCTO_VE_ID,   DESCRIPCION FROM DOCTOS_VE WHERE   FOLIO IN (    'P00071680', 'P00071681', 'P00071682', 'P00071683', 'P00071679',    'P00071672', 'P00071673', 'P00071684', 'P00071685', 'P00071654',    'P00071653', 'P00071564', 'P00071591', 'P00071652', 'P00071953',    'P00071903', 'P00071904', 'P00071905', 'P00071970', 'P00071971',    'P00071972', 'P00071973', 'P00071967', 'P00071968', 'P00071974',    'P00071969', 'P00071906', 'P00071907', 'P00071865', 'P00071902',    'P00071923', 'P00072052', 'P00071997', 'P00072149'  );";
             List<List<string>> list = getFireBirdValue.GetList(query);
             foreach (var valores in list)
             {
                 foreach (var valor in valores)
                 {
                     string nombre = getFireBirdValue.GetValue("SELECT NOMBRE FROM CLIENTES WHERE CLIENTE_ID = '" + valores[5] + "';");
-                    Tabla.Rows.Add(valores[0], valores[1], valores[2], nombre, valores[4]);
+                    Tabla.Rows.Add(valores[0], valores[1], valores[2], nombre, valores[6]);
                     query = "SELECT CLAVE_ARTICULO, UNIDADES, PRECIO_UNITARIO, PCTJE_DSCTO,PCTJE_DSCTO_CLI, PRECIO_TOTAL_NETO, UNIDADES_A_SURTIR FROM DOCTOS_VE_DET WHERE DOCTO_VE_ID = '" + valores[6] + "';";
                     List<List<string>> listart = getFireBirdValue.GetList(query);
                     Guardar(listart, "C:\\ConfigDB\\" + valores[6], valores[2], valores[7]);
@@ -212,65 +215,116 @@ namespace Exportar_Pedidos_Culiacán
             }
 
         }
-        public void Entrada()
+        public void Entrada(string archivoLiteDB)
         {
-            using (var db = new LiteDatabase(openFileDialog1.FileName))
+            using (var db = new LiteDatabase(archivoLiteDB))
             {
-                // Obtiene la colección 'ARTICULOS' (la tabla en LiteDB)
                 var articulosCollection = db.GetCollection<Articulo>("ARTICULOS");
-
-                // Lista donde vamos a almacenar los artículos en formato lista de listas
-
-                // Obtiene todos los artículos de la colección
-
                 var articulos = articulosCollection.FindAll();
-                // Itera sobre cada artículo en la colección
+
                 foreach (var articulo in articulos)
                 {
                     List<object> articuloLista = new List<object>
-                    // Crea una lista para cada artículo
-                    {
-                        articulo.Id,
-                        articulo.Clave,
-                        articulo.Nombre,
-                        articulo.Precio,
-                        articulo.Cantidad,
-                        articulo.Nota,
-                        articulo.Cliente
-                    };
+            {
+                articulo.Id,
+                articulo.Clave,
+                articulo.Nombre,
+                articulo.Precio,
+                articulo.Cantidad,
+                articulo.Nota,
+                articulo.Cliente
+            };
                     ArticulosCargados.Add(articuloLista);
                 }
-                // Ahora tienes todos los artículos en listaDeArticulos
             }
+
             int conecta = ConectaBD();
             if (conecta == 1)
             {
                 ApiBas.DBConnected(GlobalSettings.Instance.Bd);
                 ApiVe.SetDBVentas(GlobalSettings.Instance.Bd);
                 DateTime fecha = DateTime.Now;
-                int Cliente= Cliente_Id(ArticulosCargados[0][6].ToString());
-                //int ErrorFolio = ApiVe.NuevoPedido(Fecha, "IP", int.Parse(Cliente_Id), Dir_Consig_Id, Almacen_Id,"", Tipo_Desc,Descuento,"",Descripcion,Vendedor_Id, 0, 0, Moneda_Id);
+                int Cliente = Cliente_Id(ArticulosCargados[0][6].ToString());
+
                 int DoctoId = ApiMspVentasExt.NuevoPedido(fecha.ToString(), "CP", Cliente, 0, 108405, "", "P", 0, "", ArticulosCargados[0][5].ToString(), 813020, 0, 0, 1);
                 for (int i = 0; i < ArticulosCargados.Count; ++i)
                 {
                     int articulo_id = Art_Id(ArticulosCargados[i][1].ToString());
                     int ped = ApiMspVentasExt.RenglonPedido(articulo_id, double.Parse(ArticulosCargados[i][2].ToString()), double.Parse(ArticulosCargados[i][3].ToString()), double.Parse(ArticulosCargados[i][4].ToString()), "");
                 }
+
                 ApiMspVentasExt.GetDoctoVeId(ref DoctoId);
                 MessageBox.Show(DoctoId.ToString());
                 int final = ApiVe.AplicaPedido();
-                
-            }
+                ApiBas.DBDisconnect(GlobalSettings.Instance.Bd);
 
+            }
         }
+
+        //public void Entrada()
+        //{
+        //    using (var db = new LiteDatabase(openFileDialog1.FileName))
+        //    {
+        //        // Obtiene la colección 'ARTICULOS' (la tabla en LiteDB)
+        //        var articulosCollection = db.GetCollection<Articulo>("ARTICULOS");
+
+        //        // Lista donde vamos a almacenar los artículos en formato lista de listas
+
+        //        // Obtiene todos los artículos de la colección
+
+        //        var articulos = articulosCollection.FindAll();
+        //        // Itera sobre cada artículo en la colección
+        //        foreach (var articulo in articulos)
+        //        {
+        //            List<object> articuloLista = new List<object>
+        //            // Crea una lista para cada artículo
+        //            {
+        //                articulo.Id,
+        //                articulo.Clave,
+        //                articulo.Nombre,
+        //                articulo.Precio,
+        //                articulo.Cantidad,
+        //                articulo.Nota,
+        //                articulo.Cliente
+        //            };
+        //            ArticulosCargados.Add(articuloLista);
+        //        }
+        //        // Ahora tienes todos los artículos en listaDeArticulos
+        //    }
+        //    int conecta = ConectaBD();
+        //    if (conecta == 1)
+        //    {
+        //        ApiBas.DBConnected(GlobalSettings.Instance.Bd);
+        //        ApiVe.SetDBVentas(GlobalSettings.Instance.Bd);
+        //        DateTime fecha = DateTime.Now;
+        //        int Cliente= Cliente_Id(ArticulosCargados[0][6].ToString());
+        //        //int ErrorFolio = ApiVe.NuevoPedido(Fecha, "IP", int.Parse(Cliente_Id), Dir_Consig_Id, Almacen_Id,"", Tipo_Desc,Descuento,"",Descripcion,Vendedor_Id, 0, 0, Moneda_Id);
+        //        int DoctoId = ApiMspVentasExt.NuevoPedido(fecha.ToString(), "CP", Cliente, 0, 108405, "", "P", 0, "", ArticulosCargados[0][5].ToString(), 813020, 0, 0, 1);
+        //        for (int i = 0; i < ArticulosCargados.Count; ++i)
+        //        {
+        //            int articulo_id = Art_Id(ArticulosCargados[i][1].ToString());
+        //            int ped = ApiMspVentasExt.RenglonPedido(articulo_id, double.Parse(ArticulosCargados[i][2].ToString()), double.Parse(ArticulosCargados[i][3].ToString()), double.Parse(ArticulosCargados[i][4].ToString()), "");
+        //        }
+        //        ApiMspVentasExt.GetDoctoVeId(ref DoctoId);
+        //        MessageBox.Show(DoctoId.ToString());
+        //        int final = ApiVe.AplicaPedido();
+                
+        //    }
+
+        //}
         private void button1_Click(object sender, EventArgs e)
         {
-            openFileDialog1.Title = "Seleccione el archivo";
+            openFileDialog1.Title = "Seleccione uno o más archivos";
             openFileDialog1.InitialDirectory = @"C:\";
+            openFileDialog1.Multiselect = true;
+
             if (openFileDialog1.ShowDialog() == DialogResult.OK)
             {
-                GlobalSettings.Instance.nameFile = openFileDialog1.SafeFileName;
-                Entrada();
+                foreach (string archivo in openFileDialog1.FileNames)
+                {
+                    GlobalSettings.Instance.nameFile = Path.GetFileName(archivo);
+                    Entrada(archivo);
+                }
             }
         }
     }
